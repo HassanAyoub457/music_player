@@ -1,0 +1,11 @@
+# Merge these into the pubspec.yaml that `flutter create` generates.
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.2
+  just_audio: ^0.9.40
+  just_audio_background: ^0.0.1-beta.13
+  path: ^1.9.0
+  path_provider: ^2.1.4
+  permission_handler: ^11.3.1
+  shared_preferences: ^2.3.2
