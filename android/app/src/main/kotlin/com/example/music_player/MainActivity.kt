@@ -68,6 +68,7 @@ class MainActivity : AudioServiceActivity() {
                                 req.addOption("-f", "bestaudio/best")
                                 req.addOption("-x")
                                 req.addOption("--audio-format", format)
+                                req.addOption("--embed-metadata")
                             } else {
                                 req.addOption("-f", "bv*[height<=1080]+ba/b")
                                 req.addOption("--merge-output-format", "mp4")

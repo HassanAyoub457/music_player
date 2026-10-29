@@ -5,6 +5,7 @@ import 'downloader.dart';
 import 'download_page.dart';
 import 'library_page.dart';
 import 'player_controller.dart';
+import 'playlists_page.dart';
 import 'widgets.dart';
 
 Future<void> main() async {
@@ -51,7 +52,7 @@ class _HomeState extends State<Home> {
   @override
   Widget build(BuildContext context) => Scaffold(
         body: IndexedStack(
-            index: tab, children: const [LibraryPage(), DownloadPage()]),
+            index: tab, children: const [LibraryPage(), PlaylistsPage(), DownloadPage()]),
         bottomNavigationBar: Column(mainAxisSize: MainAxisSize.min, children: [
           const MiniPlayer(),
           NavigationBar(
@@ -60,6 +61,8 @@ class _HomeState extends State<Home> {
             destinations: const [
               NavigationDestination(
                   icon: Icon(Icons.library_music), label: 'Library'),
+              NavigationDestination(
+                  icon: Icon(Icons.queue_music), label: 'Playlists'),
               NavigationDestination(
                   icon: Icon(Icons.download), label: 'Download'),
             ],
