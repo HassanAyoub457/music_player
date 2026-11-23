@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'player_controller.dart';
+import 'track_artwork.dart';
+import 'track_menu.dart';
 
 class QueuePage extends StatelessWidget {
   const QueuePage({super.key});
@@ -21,33 +23,45 @@ class QueuePage extends StatelessWidget {
                 if (to > from) to -= 1;
                 c.moveInQueue(from, to);
               },
-              itemBuilder: (_, i) {
+              itemBuilder: (context, i) {
                 final t = c.queue[i];
                 final playing = current == i;
-                return ListTile(
-                  key: ObjectKey(t),
-                  leading: Icon(playing ? Icons.equalizer : Icons.music_note,
-                      color: playing
-                          ? Theme.of(context).colorScheme.primary
-                          : null),
-                  title: Text(t.title,
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: t.artist == null
-                      ? null
-                      : Text(t.artist!,
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                  onTap: () => c.jumpTo(i),
-                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      tooltip: 'Remove from queue',
-                      onPressed: () => c.removeFromQueue(i),
+                return Dismissible(
+                  key: ValueKey('${t.path}-$i'),
+                  direction: DismissDirection.startToEnd,
+                  onDismissed: (_) => c.removeFromQueue(i),
+                  background: Container(
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    color: Theme.of(context).colorScheme.errorContainer,
+                    child: Icon(
+                      Icons.remove_circle_outline,
+                      color: Theme.of(context).colorScheme.onErrorContainer,
                     ),
-                    ReorderableDragStartListener(
-                      index: i,
-                      child: const Icon(Icons.drag_handle),
-                    ),
-                  ]),
+                  ),
+                  child: ListTile(
+                    leading: TrackArtwork(bytes: t.artwork, playing: playing),
+                    title: Text(t.title,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: t.artist == null
+                        ? null
+                        : Text(t.artist!,
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                    onTap: () => c.jumpTo(i),
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      IconButton(
+                        icon: const Icon(Icons.more_vert),
+                        onPressed: () => showTrackOptions(context, t),
+                      ),
+                      ReorderableDragStartListener(
+                        index: i,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Icon(Icons.drag_handle),
+                        ),
+                      ),
+                    ]),
+                  ),
                 );
               },
             ),
