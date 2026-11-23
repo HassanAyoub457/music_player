@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'player_controller.dart';
 import 'track_menu.dart';
+import 'track_artwork.dart';
 
 class LibraryPage extends StatefulWidget {
   const LibraryPage({super.key});
@@ -80,9 +81,9 @@ class _LibraryPageState extends State<LibraryPage> {
                               final t = list[i];
                               final playing = c.current?.path == t.path;
                               return ListTile(
-                                leading: Icon(
-                                  playing ? Icons.equalizer : Icons.music_note,
-                                  color: playing ? Theme.of(context).colorScheme.primary : null,
+                                leading: TrackArtwork(
+                                  bytes: t.artwork,
+                                  playing: playing,
                                 ),
                                 title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                                 subtitle: t.artist == null ? null : Text(t.artist!, maxLines: 1, overflow: TextOverflow.ellipsis),
