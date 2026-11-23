@@ -68,8 +68,12 @@ class MiniPlayer extends StatelessWidget {
           children: [
             const PlayPauseButton(),
             IconButton(
-              icon: const Icon(Icons.skip_next),
-              onPressed: c.player.seekToNext,
+              icon: const Icon(Icons.queue_music),
+              tooltip: 'Open queue',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const QueuePage()),
+              ),
             ),
           ],
         ),
