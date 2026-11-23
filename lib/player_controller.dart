@@ -457,7 +457,16 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
   }
 
-  
+  Future<void> reorderPlaylist(String name, int oldIndex, int newIndex) async {
+    final tracks = playlists[name];
+    if (tracks == null || oldIndex < 0 || oldIndex >= tracks.length) return;
+    if (newIndex > oldIndex) newIndex--;
+    if (newIndex < 0 || newIndex >= tracks.length) return;
+    final path = tracks.removeAt(oldIndex);
+    tracks.insert(newIndex, path);
+    await _savePlaylists();
+    notifyListeners();
+  }
 
   @override
   void dispose() {
