@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'player_controller.dart';
 import 'queue_page.dart';
 import 'track_menu.dart';
+import 'track_artwork.dart';
 
 String fmt(Duration d) {
   String two(int n) => n.toString().padLeft(2, '0');
@@ -59,7 +60,7 @@ class MiniPlayer extends StatelessWidget {
           context,
           MaterialPageRoute(builder: (_) => const NowPlayingPage()),
         ),
-        leading: const Icon(Icons.music_note),
+        leading: TrackArtwork(bytes: t.artwork, size: 48),
         title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
 
         trailing: Row(
@@ -142,11 +143,22 @@ class NowPlayingPage extends StatelessWidget {
                 color: cs.primaryContainer,
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: Icon(
-                Icons.music_note,
-                size: 96,
-                color: cs.onPrimaryContainer,
-              ),
+              clipBehavior: Clip.antiAlias,
+              child: t?.artwork != null && t!.artwork!.isNotEmpty
+                  ? Image.memory(
+                      t.artwork!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.music_note,
+                        size: 96,
+                        color: cs.onPrimaryContainer,
+                      ),
+                    )
+                  : Icon(
+                      Icons.music_note,
+                      size: 96,
+                      color: cs.onPrimaryContainer,
+                    ),
             ),
             const SizedBox(height: 32),
             Text(
