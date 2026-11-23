@@ -89,7 +89,7 @@ class NowPlayingPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Now playing'),
+        // title: const Text('Now playing'),
         actions: [
           IconButton(
             icon: const Icon(Icons.queue_music),
