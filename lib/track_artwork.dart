@@ -19,6 +19,7 @@ class TrackArtwork extends StatelessWidget {
         width: size,
         height: size,
         child: image != null && image.isNotEmpty
+            // ignore: unnecessary_underscores
             ? Image.memory(image, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _placeholder(colors))
             : _placeholder(colors),
       ),

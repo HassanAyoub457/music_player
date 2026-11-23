@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
-
 import 'package:audio_metadata_reader/audio_metadata_reader.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';

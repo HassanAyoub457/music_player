@@ -19,7 +19,7 @@ class QueuePage extends StatelessWidget {
           : ReorderableListView.builder(
               buildDefaultDragHandles: false,
               itemCount: c.queue.length,
-              onReorder: (from, to) {
+              onReorderItem: (from, to) {
                 if (to > from) to -= 1;
                 c.moveInQueue(from, to);
               },

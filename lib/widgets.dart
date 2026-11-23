@@ -152,6 +152,7 @@ class NowPlayingPage extends StatelessWidget {
                   ? Image.memory(
                       t.artwork!,
                       fit: BoxFit.cover,
+                      // ignore: unnecessary_underscores
                       errorBuilder: (_, __, ___) => Icon(
                         Icons.music_note,
                         size: 96,
