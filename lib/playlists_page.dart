@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'player_controller.dart';
 import 'track_menu.dart';
+import 'track_artwork.dart';
 
 class PlaylistsPage extends StatelessWidget {
   const PlaylistsPage({super.key});
@@ -149,23 +150,38 @@ class PlaylistDetailPage extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: ListView.builder(
+                  child: ReorderableListView.builder(
                     itemCount: tracks.length,
-                    itemBuilder: (_, i) {
+                    onReorderItem: (oldIndex, newIndex) =>
+                        c.reorderPlaylist(name, oldIndex, newIndex),
+                    itemBuilder: (context, i) {
                       final t = tracks[i];
                       final playing = c.current?.path == t.path;
                       return ListTile(
-                        leading: Icon(
-                          playing ? Icons.equalizer : Icons.music_note,
-                          color: playing ? Theme.of(context).colorScheme.primary : null,
+                        key: ValueKey(t.path),
+                        leading: TrackArtwork(
+                          bytes: t.artwork,
+                          playing: playing,
                         ),
                         title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                         subtitle: t.artist == null
                             ? null
                             : Text(t.artist!, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.more_vert),
-                          onPressed: () => showTrackOptions(context, t, inPlaylist: name),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.more_vert),
+                              onPressed: () => showTrackOptions(context, t, inPlaylist: name),
+                            ),
+                            ReorderableDragStartListener(
+                              index: i,
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 12),
+                                child: Icon(Icons.drag_handle),
+                              ),
+                            ),
+                          ],
                         ),
                         onTap: () => c.playQueue(tracks, i),
                         onLongPress: () => showTrackOptions(context, t, inPlaylist: name),
