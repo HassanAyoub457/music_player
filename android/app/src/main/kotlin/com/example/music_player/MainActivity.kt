@@ -39,7 +39,7 @@ class MainActivity : AudioServiceActivity() {
                             initialized = true
                         }
                         main.post { result.success(true) }
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         main.post { result.error("INIT", e.message, null) }
                     }
                 }
