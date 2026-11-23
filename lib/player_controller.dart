@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:audio_metadata_reader/audio_metadata_reader.dart';
 import 'package:flutter/foundation.dart';
@@ -17,12 +18,22 @@ class Track {
   String title;
   String? artist;
   String? album;
+  String? albumArtist;
+  String? genre;
+  Duration? duration;
+  int? bitrate;
+  Uint8List? artwork;
   Track(this.path) : title = p.basenameWithoutExtension(path);
 
   Track clone() => Track(path)
     ..title = title
     ..artist = artist
-    ..album = album;
+    ..album = album
+    ..albumArtist = albumArtist
+    ..genre = genre
+    ..duration = duration
+    ..bitrate = bitrate
+    ..artwork = artwork;
 }
 
 class PlayerController extends ChangeNotifier {
@@ -48,10 +59,14 @@ class PlayerController extends ChangeNotifier {
     '.wav',
     '.ogg',
     '.opus',
-    '.mp4',
     '.webm',
     '.mkv',
   };
+
+  static bool _isWhatsAppAudioPath(String path) {
+    final parts = p.split(p.normalize(path)).map((part) => part.toLowerCase());
+    return parts.any((part) => part.contains('whatsapp'));
+  }
 
   static Future<Directory> downloadDir() async {
     final base =
@@ -107,13 +122,21 @@ class PlayerController extends ChangeNotifier {
   Future<Track> _load(String path) async {
     final t = Track(path);
     try {
-      final md = await Future.value(readMetadata(File(path), getImage: false));
+      final md = await Future.value(readMetadata(File(path), getImage: true));
       final title = md.title?.trim();
       final artist = md.artist?.trim();
       final album = md.album?.trim();
+      final albumArtist = md.albumArtist?.trim();
       if (title != null && title.isNotEmpty) t.title = title;
       if (artist != null && artist.isNotEmpty) t.artist = artist;
       if (album != null && album.isNotEmpty) t.album = album;
+      if (albumArtist != null && albumArtist.isNotEmpty) {
+        t.albumArtist = albumArtist;
+      }
+      t.genre = md.genres.isEmpty ? null : md.genres.join(', ');
+      t.duration = md.duration;
+      t.bitrate = md.bitrate;
+      if (md.pictures.isNotEmpty) t.artwork = md.pictures.first.bytes;
     } catch (_) {
       // unsupported format or no tags: filename fallback
     }
@@ -145,7 +168,9 @@ class PlayerController extends ChangeNotifier {
           continue;
         }
         await for (final e in dir.list(recursive: true, followLinks: false)) {
-          if (e is File && _exts.contains(p.extension(e.path).toLowerCase())) {
+          if (e is File &&
+              !_isWhatsAppAudioPath(e.path) &&
+              _exts.contains(p.extension(e.path).toLowerCase())) {
             found.add(e.path);
           }
         }
@@ -358,6 +383,81 @@ class PlayerController extends ChangeNotifier {
     await _savePlaylists();
     notifyListeners();
   }
+
+  Future<void> editTrackTags(
+    Track track, {
+    required String title,
+    required String artist,
+    required String album,
+    required String genre,
+  }) async {
+    await Future<void>(() {
+      updateMetadata(File(track.path), (metadata) {
+        metadata
+          ..setTitle(title.trim())
+          ..setArtist(artist.trim())
+          ..setAlbum(album.trim())
+          ..setGenres(genre.trim().isEmpty ? [] : [genre.trim()]);
+      });
+    });
+    track
+      ..title = title.trim().isEmpty ? p.basenameWithoutExtension(track.path) : title.trim()
+      ..artist = artist.trim().isEmpty ? null : artist.trim()
+      ..album = album.trim().isEmpty ? null : album.trim()
+      ..genre = genre.trim().isEmpty ? null : genre.trim();
+    _cache[track.path] = track;
+    for (final item in [...library, ...queue]) {
+      if (item.path == track.path && !identical(item, track)) {
+        item
+          ..title = track.title
+          ..artist = track.artist
+          ..album = track.album
+          ..albumArtist = track.albumArtist
+          ..genre = track.genre;
+      }
+    }
+    notifyListeners();
+  }
+
+  Future<void> editTrackCover(Track track, String imagePath) async {
+    final imageFile = File(imagePath);
+    final ext = p.extension(imagePath).toLowerCase();
+    final mime = switch (ext) {
+      '.jpg' || '.jpeg' => 'image/jpeg',
+      '.png' => 'image/png',
+      _ => null,
+    };
+    if (mime == null) throw const FormatException('Choose a JPG or PNG image.');
+    final bytes = await imageFile.readAsBytes();
+    await Future<void>(() {
+      updateMetadata(File(track.path), (metadata) {
+        metadata.setPictures([Picture(bytes, mime, PictureType.coverFront)]);
+      });
+    });
+    track.artwork = bytes;
+    _cache[track.path] = track;
+    for (final item in [...library, ...queue]) {
+      if (item.path == track.path) item.artwork = bytes;
+    }
+    notifyListeners();
+  }
+
+  Future<void> refreshTrack(Track track) async {
+    final refreshed = await _load(track.path);
+    track
+      ..title = refreshed.title
+      ..artist = refreshed.artist
+      ..album = refreshed.album
+      ..albumArtist = refreshed.albumArtist
+      ..genre = refreshed.genre
+      ..duration = refreshed.duration
+      ..bitrate = refreshed.bitrate
+      ..artwork = refreshed.artwork;
+    _cache[track.path] = track;
+    notifyListeners();
+  }
+
+  
 
   @override
   void dispose() {
