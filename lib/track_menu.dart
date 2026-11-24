@@ -264,6 +264,11 @@ Future<void> showTrackOptions(BuildContext context, Track t, {String? inPlaylist
 }
 
 Future<void> _showTrackDetails(BuildContext context, Track track, PlayerController controller) {
+  final messenger = ScaffoldMessenger.of(context);
+  void say(String m) => messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(m), duration: const Duration(seconds: 2)));
+
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -273,7 +278,7 @@ Future<void> _showTrackDetails(BuildContext context, Track track, PlayerControll
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
         child: FutureBuilder<FileStat>(
           future: FileStat.stat(track.path),
-          builder: (context, snapshot) {
+          builder: (sheetContext, snapshot) {
             final stat = snapshot.data;
             final fields = <(String, String)>[
               ('Title', track.title),
@@ -291,7 +296,7 @@ Future<void> _showTrackDetails(BuildContext context, Track track, PlayerControll
               children: [
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Details', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                  child: Text('Details', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(height: 18),
                 Flexible(
@@ -306,7 +311,7 @@ Future<void> _showTrackDetails(BuildContext context, Track track, PlayerControll
                               children: [
                                 SizedBox(width: 82, child: Text(field.$1)),
                                 Expanded(
-                                  child: Text(field.$2, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                                  child: Text(field.$2, style: TextStyle(color: Theme.of(sheetContext).colorScheme.onSurfaceVariant)),
                                 ),
                               ],
                             ),
@@ -326,6 +331,7 @@ Future<void> _showTrackDetails(BuildContext context, Track track, PlayerControll
                       child: FilledButton(
                         onPressed: () async {
                           Navigator.pop(detailsContext);
+                          if (!context.mounted) return;
                           final result = await showDialog<Map<String, String>>(
                             context: context,
                             builder: (_) => _EditTagsDialog(track: track),
@@ -339,9 +345,9 @@ Future<void> _showTrackDetails(BuildContext context, Track track, PlayerControll
                               album: result['album'] ?? '',
                               genre: result['genre'] ?? '',
                             );
-                            if (context.mounted) toast(context, 'Track tags updated');
+                            say('Track tags updated');
                           } catch (e) {
-                            if (context.mounted) toast(context, 'Could not update tags: $e');
+                            say('Could not update tags: $e');
                           }
                         },
                         child: const Text('EDIT'),

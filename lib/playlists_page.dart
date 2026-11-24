@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'player_controller.dart';
 import 'track_menu.dart';
 import 'track_artwork.dart';
+import 'widgets.dart' show NowPlayingPage;
 
 class PlaylistsPage extends StatelessWidget {
   const PlaylistsPage({super.key});
@@ -64,7 +65,17 @@ class PlaylistsPage extends StatelessWidget {
                           onSelected: (v) async {
                             final tracks = c.tracksOf(n);
                             if (v == 'play') {
-                              if (tracks.isNotEmpty) await c.playQueue(tracks, 0);
+                              if (tracks.isNotEmpty) {
+                                await c.playQueue(tracks, 0);
+                                if (context.mounted) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const NowPlayingPage(),
+                                    ),
+                                  );
+                                }
+                              }
                             } else if (v == 'play_next') {
                               for (final track in tracks.reversed) {
                                 await c.playNext(track);
@@ -145,13 +156,29 @@ class PlaylistDetailPage extends StatelessWidget {
                       FilledButton.icon(
                         icon: const Icon(Icons.play_arrow),
                         label: const Text('Play'),
-                        onPressed: () => c.playQueue(tracks, 0),
+                        onPressed: () async {
+                          await c.playQueue(tracks, 0);
+                          if (context.mounted) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const NowPlayingPage()),
+                            );
+                          }
+                        },
                       ),
                       const SizedBox(width: 8),
                       OutlinedButton.icon(
                         icon: const Icon(Icons.shuffle),
                         label: const Text('Shuffle'),
-                        onPressed: () => c.playShuffled(tracks),
+                        onPressed: () async {
+                          await c.playShuffled(tracks);
+                          if (context.mounted) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const NowPlayingPage()),
+                            );
+                          }
+                        },
                       ),
                     ],
                   ),
