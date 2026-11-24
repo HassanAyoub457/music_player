@@ -71,13 +71,19 @@ class _QueuePageState extends State<QueuePage> {
           IconButton(
             tooltip: c.player.shuffleModeEnabled ? 'Turn shuffle off' : 'Turn shuffle on',
             color: c.player.shuffleModeEnabled ? cs.primary : null,
-            icon: const Icon(Icons.shuffle),
-            onPressed: c.toggleShuffle,
+            icon: Opacity(
+              opacity: c.player.shuffleModeEnabled ? 1 : 0.45,
+              child: const Icon(Icons.shuffle),
+            ),
+            onPressed: () => c.toggleShuffle(reshuffleQueue: true),
           ),
           IconButton(
             tooltip: c.player.loopMode == LoopMode.off ? 'Turn loop on' : 'Turn loop off',
             color: c.player.loopMode == LoopMode.off ? null : cs.primary,
-            icon: Icon(c.player.loopMode == LoopMode.one ? Icons.repeat_one : Icons.repeat),
+            icon: Opacity(
+              opacity: c.player.loopMode == LoopMode.off ? 0.45 : 1,
+              child: Icon(c.player.loopMode == LoopMode.one ? Icons.repeat_one : Icons.repeat),
+            ),
             onPressed: c.cycleLoop,
           ),
         ],
@@ -97,7 +103,7 @@ class _QueuePageState extends State<QueuePage> {
                 ),
                 IconButton(
                   tooltip: 'Clear queue',
-                  icon: const Icon(Icons.clear_all),
+                  icon: const Icon(Icons.delete_sweep_outlined),
                   onPressed: c.queue.isEmpty ? null : c.clearQueue,
                 ),
               ],
