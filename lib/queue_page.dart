@@ -1,12 +1,62 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'player_controller.dart';
 import 'track_artwork.dart';
 import 'track_menu.dart';
+import 'widgets.dart' show MiniPlayer;
 
-class QueuePage extends StatelessWidget {
+class QueuePage extends StatefulWidget {
   const QueuePage({super.key});
+
+  @override
+  State<QueuePage> createState() => _QueuePageState();
+}
+
+class _QueuePageState extends State<QueuePage> {
+  // Every queue row is forced to this height (see itemExtent below), so the
+  // scroll offset for a given index is exact.
+  static const double _rowExtent = 72;
+
+  final _scrollController = ScrollController();
+  int? _highlightedIndex;
+  Timer? _highlightTimer;
+
+  @override
+  void dispose() {
+    _highlightTimer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToCurrent() {
+    final c = context.read<PlayerController>();
+    final current = c.player.currentIndex;
+    if (current == null || current < 0 || current >= c.queue.length) return;
+
+    _highlightTimer?.cancel();
+    setState(() => _highlightedIndex = current);
+    _highlightTimer = Timer(const Duration(milliseconds: 1400), () {
+      if (mounted) setState(() => _highlightedIndex = null);
+    });
+
+    // Rows have a fixed extent, so the current index maps directly to an
+    // offset. Center the row and clamp to the scrollable range.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      final pos = _scrollController.position;
+      final target =
+          (current * _rowExtent - (pos.viewportDimension - _rowExtent) / 2)
+              .clamp(0.0, pos.maxScrollExtent);
+      _scrollController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,15 +107,17 @@ class QueuePage extends StatelessWidget {
             child: c.queue.isEmpty
                 ? const Center(child: Text('The queue is empty'))
                 : ReorderableListView.builder(
+              key: const PageStorageKey<String>('playing-queue'),
+              scrollController: _scrollController,
+              itemExtent: _rowExtent,
               buildDefaultDragHandles: false,
               itemCount: c.queue.length,
-              onReorderItem: (from, to) {
-                if (to > from) to -= 1;
-                c.moveInQueue(from, to);
-              },
+              // onReorderItem already passes the adjusted target index.
+              onReorderItem: (from, to) => c.moveInQueue(from, to),
               itemBuilder: (context, i) {
                 final t = c.queue[i];
                 final playing = current == i;
+                  final highlighted = _highlightedIndex == i;
                 return Dismissible(
                   key: ValueKey('${t.path}-$i'),
                   direction: DismissDirection.startToEnd,
@@ -79,7 +131,12 @@ class QueuePage extends StatelessWidget {
                       color: Theme.of(context).colorScheme.onErrorContainer,
                     ),
                   ),
-                  child: ListTile(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      color: highlighted
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : Colors.transparent,
+                      child: ListTile(
                     leading: TrackArtwork(bytes: t.artwork, playing: playing),
                     title: Text(t.title,
                         maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -102,10 +159,19 @@ class QueuePage extends StatelessWidget {
                       ),
                     ]),
                   ),
+                    ),
                 );
               },
             ),
           ),
+          if (c.current != null)
+            MiniPlayer(
+              trailing: IconButton(
+                tooltip: 'Scroll to currently playing song',
+                icon: const Icon(Icons.my_location),
+                onPressed: _scrollToCurrent,
+              ),
+            ),
         ],
       ),
     );

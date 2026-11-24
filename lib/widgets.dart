@@ -47,7 +47,8 @@ class PlayPauseButton extends StatelessWidget {
 }
 
 class MiniPlayer extends StatelessWidget {
-  const MiniPlayer({super.key});
+  final Widget? trailing;
+  const MiniPlayer({super.key, this.trailing});
   @override
   Widget build(BuildContext context) {
     final c = context.watch<PlayerController>();
@@ -67,14 +68,17 @@ class MiniPlayer extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const PlayPauseButton(),
-            IconButton(
-              icon: const Icon(Icons.queue_music),
-              tooltip: 'Open queue',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const QueuePage()),
+            if (trailing != null)
+              trailing!
+            else
+              IconButton(
+                icon: const Icon(Icons.queue_music),
+                tooltip: 'Open queue',
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const QueuePage()),
+                ),
               ),
-            ),
           ],
         ),
       ),
