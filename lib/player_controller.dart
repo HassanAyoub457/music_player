@@ -49,6 +49,13 @@ class PlayerController extends ChangeNotifier {
   int? sleepMinutes;
   Timer? _sleep;
 
+  /// Shuffle physically reorders [queue] (and the audio source) so the list
+  /// shows exactly the order that will play. just_audio's own shuffle mode is
+  /// never used, otherwise the list and the real playback order would differ.
+  bool shuffled = false;
+  List<Track>? _originalOrder; // queue order from before shuffle was turned on
+  bool _reordering = false;
+
   static const _exts = {
     '.mp3',
     '.m4a',
@@ -219,23 +226,80 @@ class PlayerController extends ChangeNotifier {
     }
     queue = nextQueue;
     _source = src;
+    _originalOrder = null;
     notifyListeners();
     unawaited(player.play());
+    if (shuffled) await _shuffleQueue(); // shuffle stays on for new queues
   }
 
   Future<void> playShuffled(List<Track> tracks) async {
     if (tracks.isEmpty) return;
-    await player.setShuffleModeEnabled(true);
+    shuffled = true; // playQueue shuffles the new queue, chosen song first
+    notifyListeners();
     await playQueue(tracks, Random().nextInt(tracks.length));
-    await player.shuffle();
   }
 
   void togglePlay() => player.playing ? player.pause() : player.play();
 
-  Future<void> toggleShuffle({bool reshuffleQueue = false}) async {
-    final on = !player.shuffleModeEnabled;
-    await player.setShuffleModeEnabled(on);
-    if (on && (reshuffleQueue || _source != null)) await player.shuffle();
+  Future<void> toggleShuffle() async {
+    if (_reordering) return;
+    _reordering = true;
+    try {
+      shuffled = !shuffled;
+      notifyListeners();
+      if (shuffled) {
+        await _shuffleQueue();
+      } else {
+        await _restoreOrder();
+      }
+    } finally {
+      _reordering = false;
+    }
+  }
+
+  /// Keeps the playing song (so playback is never interrupted) and puts it
+  /// first, followed by every other song in random order.
+  Future<void> _shuffleQueue() async {
+    final cur = player.currentIndex;
+    if (_source == null || cur == null || cur < 0 || cur >= queue.length) {
+      return;
+    }
+    _originalOrder = List<Track>.of(queue);
+    final rest = [...queue.sublist(0, cur), ...queue.sublist(cur + 1)]..shuffle();
+    await _rebuildAround(const [], rest);
+  }
+
+  /// Puts the queue back in the order it had before shuffle was turned on.
+  /// Songs removed meanwhile are dropped; songs added meanwhile go at the end.
+  Future<void> _restoreOrder() async {
+    final orig = _originalOrder;
+    _originalOrder = null;
+    final cur = player.currentIndex;
+    if (orig == null || _source == null || cur == null || cur < 0 || cur >= queue.length) {
+      return;
+    }
+    final now = queue[cur];
+    final inQueue = Set<Track>.identity()..addAll(queue);
+    final ordered = [for (final t in orig) if (inQueue.contains(t)) t];
+    final known = Set<Track>.identity()..addAll(ordered);
+    ordered.addAll(queue.where((t) => !known.contains(t)));
+    final k = ordered.indexWhere((t) => identical(t, now));
+    if (k < 0) return;
+    await _rebuildAround(ordered.sublist(0, k), ordered.sublist(k + 1));
+  }
+
+  /// Replaces everything except the playing song with [before] and [after].
+  Future<void> _rebuildAround(List<Track> before, List<Track> after) async {
+    final src = _source;
+    final cur = player.currentIndex;
+    if (src == null || cur == null || cur < 0 || cur >= queue.length) return;
+    final now = queue[cur];
+    if (cur + 1 < queue.length) await src.removeRange(cur + 1, queue.length);
+    if (cur > 0) await src.removeRange(0, cur);
+    if (before.isNotEmpty) await src.insertAll(0, [for (final t in before) _src(t)]);
+    if (after.isNotEmpty) await src.addAll([for (final t in after) _src(t)]);
+    queue = [...before, now, ...after];
+    notifyListeners();
   }
 
   void cycleLoop() {
@@ -331,6 +395,7 @@ class PlayerController extends ChangeNotifier {
     await src.clear();
     queue.clear();
     _source = null;
+    _originalOrder = null;
     notifyListeners();
   }
 

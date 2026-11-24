@@ -220,7 +220,7 @@ class NowPlayingPage extends StatelessWidget {
                 IconButton(
                   icon: Icon(
                     Icons.shuffle,
-                    color: p.shuffleModeEnabled ? cs.primary : null,
+                    color: c.shuffled ? cs.primary : null,
                   ),
                   onPressed: c.toggleShuffle,
                 ),

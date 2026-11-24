@@ -19,11 +19,7 @@ class _LibraryPageState extends State<LibraryPage> {
   Widget build(BuildContext context) {
     final c = context.watch<PlayerController>();
     final list = c.library
-        .where(
-          (t) =>
-              (!favsOnly || c.favorites.contains(t.path)) &&
-              (t.title.toLowerCase().contains(q.toLowerCase()) || (t.artist ?? '').toLowerCase().contains(q.toLowerCase())),
-        )
+        .where((t) => (!favsOnly || c.favorites.contains(t.path)) && (t.title.toLowerCase().contains(q.toLowerCase()) || (t.artist ?? '').toLowerCase().contains(q.toLowerCase())))
         .toList();
 
     return SafeArea(
@@ -51,11 +47,7 @@ class _LibraryPageState extends State<LibraryPage> {
               children: [
                 Text('${list.length} songs'),
                 const Spacer(),
-                TextButton.icon(
-                  onPressed: list.isEmpty ? null : () => c.playShuffled(list),
-                  icon: const Icon(Icons.shuffle),
-                  label: const Text('Shuffle play'),
-                ),
+                TextButton.icon(onPressed: list.isEmpty ? null : () => c.playShuffled(list), icon: const Icon(Icons.shuffle), label: const Text('Shuffle play')),
               ],
             ),
           ),
@@ -69,9 +61,7 @@ class _LibraryPageState extends State<LibraryPage> {
                             children: const [
                               Padding(
                                 padding: EdgeInsets.all(48),
-                                child: Center(
-                                  child: Text('No songs found.\nDownload some in the Download tab, or pull to rescan.', textAlign: TextAlign.center),
-                                ),
+                                child: Center(child: Text('No songs found.\nDownload some in the Download tab, or pull to rescan.', textAlign: TextAlign.center)),
                               ),
                             ],
                           )

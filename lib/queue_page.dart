@@ -69,13 +69,16 @@ class _QueuePageState extends State<QueuePage> {
         title: const Text('Playing queue'),
         actions: [
           IconButton(
-            tooltip: c.player.shuffleModeEnabled ? 'Turn shuffle off' : 'Turn shuffle on',
-            color: c.player.shuffleModeEnabled ? cs.primary : null,
+            tooltip: c.shuffled ? 'Turn shuffle off' : 'Turn shuffle on',
+            color: c.shuffled ? cs.primary : null,
             icon: Opacity(
-              opacity: c.player.shuffleModeEnabled ? 1 : 0.45,
+              opacity: c.shuffled ? 1 : 0.45,
               child: const Icon(Icons.shuffle),
             ),
-            onPressed: () => c.toggleShuffle(reshuffleQueue: true),
+            onPressed: () async {
+              await c.toggleShuffle();
+              if (mounted) _scrollToCurrent(); // show the new order
+            },
           ),
           IconButton(
             tooltip: c.player.loopMode == LoopMode.off ? 'Turn loop on' : 'Turn loop off',
