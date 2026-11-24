@@ -206,10 +206,19 @@ class PlayerController extends ChangeNotifier {
 
   Future<void> playQueue(List<Track> tracks, int index) async {
     if (tracks.isEmpty) return;
-    queue = List.of(tracks);
-    final src = ConcatenatingAudioSource(children: [for (final t in queue) _src(t)]);
+    final nextQueue = List<Track>.of(tracks);
+    final src = ConcatenatingAudioSource(children: [for (final t in nextQueue) _src(t)]);
+    try {
+      await player.setAudioSource(src, initialIndex: index);
+    } on PlayerException catch (e) {
+      debugPrint('Unable to load track: ${e.message}');
+      return;
+    } catch (e) {
+      debugPrint('Unable to load queue: $e');
+      return;
+    }
+    queue = nextQueue;
     _source = src;
-    await player.setAudioSource(src, initialIndex: index);
     notifyListeners();
     unawaited(player.play());
   }
