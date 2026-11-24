@@ -232,10 +232,10 @@ class PlayerController extends ChangeNotifier {
 
   void togglePlay() => player.playing ? player.pause() : player.play();
 
-  Future<void> toggleShuffle() async {
+  Future<void> toggleShuffle({bool reshuffleQueue = false}) async {
     final on = !player.shuffleModeEnabled;
     await player.setShuffleModeEnabled(on);
-    if (on) await player.shuffle();
+    if (on && (reshuffleQueue || _source != null)) await player.shuffle();
   }
 
   void cycleLoop() {
