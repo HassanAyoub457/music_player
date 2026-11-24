@@ -145,7 +145,11 @@ class _QueuePageState extends State<QueuePage> {
                       child: ListTile(
                     leading: TrackArtwork(bytes: t.artwork, playing: playing),
                     title: Text(t.title,
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: playing
+                            ? const TextStyle(color: Colors.yellow)
+                            : null),
                     subtitle: t.artist == null
                         ? null
                         : Text(t.artist!,

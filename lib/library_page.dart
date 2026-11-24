@@ -81,11 +81,13 @@ class _LibraryPageState extends State<LibraryPage> {
                               final t = list[i];
                               final playing = c.current?.path == t.path;
                               return ListTile(
-                                leading: TrackArtwork(
-                                  bytes: t.artwork,
-                                  playing: playing,
+                                leading: TrackArtwork(bytes: t.artwork, playing: playing),
+                                title: Text(
+                                  t.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: playing ? const TextStyle(color: Colors.yellow) : null,
                                 ),
-                                title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                                 subtitle: t.artist == null ? null : Text(t.artist!, maxLines: 1, overflow: TextOverflow.ellipsis),
                                 trailing: IconButton(icon: const Icon(Icons.more_vert), onPressed: () => showTrackOptions(context, t)),
                                 onTap: () => c.playQueue(list, i),
