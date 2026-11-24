@@ -6,6 +6,7 @@ import 'download_page.dart';
 import 'library_page.dart';
 import 'player_controller.dart';
 import 'playlists_page.dart';
+import 'theme.dart';
 import 'widgets.dart';
 
 Future<void> main() async {
@@ -22,12 +23,13 @@ Future<void> main() async {
     ],
     child: MaterialApp(
       title: 'Seal Player',
-      themeMode: ThemeMode.system,
-      theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
-      darkTheme: ThemeData(
-          colorSchemeSeed: Colors.teal,
-          brightness: Brightness.dark,
-          useMaterial3: true),
+      themeMode: ThemeMode.dark,
+      theme: AppTheme.dark(),
+      // One gradient behind every page; scaffolds are transparent.
+      builder: (context, child) => DecoratedBox(
+        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
+        child: child,
+      ),
       home: const Home(),
     ),
   ));

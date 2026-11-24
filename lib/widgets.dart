@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'player_controller.dart';
 import 'queue_page.dart';
+import 'theme.dart';
 import 'track_menu.dart';
 import 'track_artwork.dart';
 
@@ -54,9 +55,24 @@ class MiniPlayer extends StatelessWidget {
     final c = context.watch<PlayerController>();
     final t = c.current;
     if (t == null) return const SizedBox.shrink();
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: ListTile(
+    return Container(
+      // margin: const EdgeInsets.fromLTRB(10, 0, 10, 6),
+      decoration: BoxDecoration(
+        gradient: AppTheme.accentGradient,
+        // borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.shadow.withValues(alpha: 0.30),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(22),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const NowPlayingPage()),
@@ -81,6 +97,7 @@ class MiniPlayer extends StatelessWidget {
               ),
           ],
         ),
+      ),
       ),
     );
   }
