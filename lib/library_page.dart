@@ -15,6 +15,15 @@ class _LibraryPageState extends State<LibraryPage> {
   // String q = '';
   bool favsOnly = false;
   TextEditingController q = TextEditingController(text: '');
+  final Set<String> selectedPaths = {};
+
+  void _toggleSelection(String path) {
+    setState(() {
+      if (!selectedPaths.add(path)) selectedPaths.remove(path);
+    });
+  }
+
+  void _exitSelection() => setState(selectedPaths.clear);
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +31,7 @@ class _LibraryPageState extends State<LibraryPage> {
     final list = c.library
         .where(
           (t) =>
+              !c.hiddenTracks.contains(t.path) &&
               (!favsOnly || c.favorites.contains(t.path)) &&
               (t.title.toLowerCase().contains(q.text.toLowerCase()) || (t.artist ?? '').toLowerCase().contains(q.text.toLowerCase())),
         )
@@ -52,9 +62,30 @@ class _LibraryPageState extends State<LibraryPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                Text('${list.length} songs'),
-                const Spacer(),
-                TextButton.icon(onPressed: list.isEmpty ? null : () => c.playShuffled(list), icon: const Icon(Icons.shuffle), label: const Text('Shuffle play')),
+                if (selectedPaths.isNotEmpty) ...[
+                  IconButton(
+                    tooltip: 'Cancel selection',
+                    icon: const Icon(Icons.close),
+                    onPressed: _exitSelection,
+                  ),
+                  Text('${selectedPaths.length} selected'),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: 'Hide selected songs',
+                    icon: const Icon(Icons.visibility_off_outlined),
+                    onPressed: () async {
+                      final selected = c.library
+                          .where((track) => selectedPaths.contains(track.path))
+                          .toList();
+                      await c.hideTracks(selected);
+                      if (mounted) _exitSelection();
+                    },
+                  ),
+                ] else ...[
+                  Text('${list.length} songs'),
+                  const Spacer(),
+                  TextButton.icon(onPressed: list.isEmpty ? null : () => c.playShuffled(list), icon: const Icon(Icons.shuffle), label: const Text('Shuffle play')),
+                ],
               ],
             ),
           ),
@@ -77,8 +108,13 @@ class _LibraryPageState extends State<LibraryPage> {
                             itemBuilder: (_, i) {
                               final t = list[i];
                               final playing = c.current?.path == t.path;
+                              final selected = selectedPaths.contains(t.path);
                               return ListTile(
-                                leading: TrackArtwork(bytes: t.artwork, playing: playing),
+                                selected: selected,
+                                selectedTileColor: Theme.of(context).colorScheme.secondaryContainer,
+                                leading: selected
+                                    ? const CircleAvatar(child: Icon(Icons.check))
+                                    : TrackArtwork(bytes: t.artwork, playing: playing),
                                 title: Text(
                                   t.title,
                                   maxLines: 1,
@@ -86,9 +122,13 @@ class _LibraryPageState extends State<LibraryPage> {
                                   style: playing ? const TextStyle(color: Colors.yellow) : null,
                                 ),
                                 subtitle: t.artist == null ? null : Text(t.artist!, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                trailing: IconButton(icon: const Icon(Icons.more_vert), onPressed: () => showTrackOptions(context, t)),
-                                onTap: () => c.playQueue(list, i),
-                                onLongPress: () => showTrackOptions(context, t),
+                                trailing: selectedPaths.isEmpty
+                                    ? IconButton(icon: const Icon(Icons.more_vert), onPressed: () => showTrackOptions(context, t))
+                                    : null,
+                                onTap: () => selectedPaths.isNotEmpty
+                                    ? _toggleSelection(t.path)
+                                    : c.playQueue(list, i),
+                                onLongPress: () => _toggleSelection(t.path),
                               );
                             },
                           ),

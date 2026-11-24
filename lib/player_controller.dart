@@ -12,7 +12,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Track {
-  final String path;
+  String path;
   String title;
   String? artist;
   String? album;
@@ -39,6 +39,7 @@ class PlayerController extends ChangeNotifier {
   List<Track> library = [];
   List<Track> queue = [];
   Set<String> favorites = {};
+  Set<String> hiddenTracks = {};
   Map<String, List<String>> playlists = {}; // name -> file paths
   Map<String, Track> _index = {};
   ConcatenatingAudioSource? _source;
@@ -112,6 +113,7 @@ class PlayerController extends ChangeNotifier {
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     favorites = (prefs.getStringList('fav') ?? []).toSet();
+    hiddenTracks = (prefs.getStringList('hiddenTracks') ?? []).toSet();
     final raw = prefs.getString('playlists');
     if (raw != null) {
       try {
@@ -196,7 +198,7 @@ class PlayerController extends ChangeNotifier {
           continue;
         }
         await for (final e in dir.list(recursive: true, followLinks: false)) {
-          if (e is File &&
+            if (e is File &&
               !_isWhatsAppAudioPath(e.path) &&
               _exts.contains(p.extension(e.path).toLowerCase())) {
             found.add(e.path);
@@ -354,6 +356,22 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> hideTracks(Iterable<Track> tracks) async {
+    final paths = tracks.map((track) => track.path).toSet();
+    if (paths.isEmpty) return;
+    hiddenTracks.addAll(paths);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('hiddenTracks', hiddenTracks.toList());
+    notifyListeners();
+  }
+
+  Future<void> unhideTrack(String path) async {
+    if (!hiddenTracks.remove(path)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('hiddenTracks', hiddenTracks.toList());
+    await scan();
+  }
+
   Future<void> delete(Track t) async {
     try {
       await File(t.path).delete();
@@ -496,30 +514,67 @@ class PlayerController extends ChangeNotifier {
     required String album,
     required String genre,
   }) async {
+    final oldPath = track.path;
+    final oldFile = File(oldPath);
+    final cleanTitle = title.trim();
+    final newTitle = cleanTitle.isEmpty
+        ? p.basenameWithoutExtension(oldPath)
+        : cleanTitle.replaceAll(RegExp(r'[/\\]'), '_');
+    final newPath = p.join(p.dirname(oldPath), '$newTitle${p.extension(oldPath)}');
+    final pathChanged = p.normalize(newPath) != p.normalize(oldPath);
+
+    if (pathChanged && await File(newPath).exists()) {
+      throw FileSystemException('A file with that name already exists.', newPath);
+    }
+
+    // Write tags first so a tag-writing failure leaves the original filename intact.
     await Future<void>(() {
-      updateMetadata(File(track.path), (metadata) {
+      updateMetadata(oldFile, (metadata) {
         metadata
-          ..setTitle(title.trim())
+          ..setTitle(cleanTitle)
           ..setArtist(artist.trim())
           ..setAlbum(album.trim())
           ..setGenres(genre.trim().isEmpty ? [] : [genre.trim()]);
       });
     });
+
+    if (pathChanged) {
+      await oldFile.rename(newPath);
+      for (final playlistTracks in playlists.values) {
+        for (var i = 0; i < playlistTracks.length; i++) {
+          if (playlistTracks[i] == oldPath) playlistTracks[i] = newPath;
+        }
+      }
+      if (favorites.remove(oldPath)) favorites.add(newPath);
+      if (hiddenTracks.remove(oldPath)) hiddenTracks.add(newPath);
+      _cache.remove(oldPath);
+      track.path = newPath;
+    }
+
     track
-      ..title = title.trim().isEmpty ? p.basenameWithoutExtension(track.path) : title.trim()
+      ..title = newTitle
       ..artist = artist.trim().isEmpty ? null : artist.trim()
       ..album = album.trim().isEmpty ? null : album.trim()
       ..genre = genre.trim().isEmpty ? null : genre.trim();
     _cache[track.path] = track;
+    _index.remove(oldPath);
+    _index[track.path] = track;
     for (final item in [...library, ...queue]) {
-      if (item.path == track.path && !identical(item, track)) {
+      if (item.path == oldPath && !identical(item, track)) {
         item
+          ..path = track.path
           ..title = track.title
           ..artist = track.artist
           ..album = track.album
           ..albumArtist = track.albumArtist
           ..genre = track.genre;
       }
+    }
+    if (pathChanged) {
+      await _savePlaylists();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('fav', favorites.toList());
+      await prefs.setStringList('hiddenTracks', hiddenTracks.toList());
     }
     notifyListeners();
   }
