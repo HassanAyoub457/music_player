@@ -12,14 +12,19 @@ class LibraryPage extends StatefulWidget {
 }
 
 class _LibraryPageState extends State<LibraryPage> {
-  String q = '';
+  // String q = '';
   bool favsOnly = false;
+  TextEditingController q = TextEditingController(text: '');
 
   @override
   Widget build(BuildContext context) {
     final c = context.watch<PlayerController>();
     final list = c.library
-        .where((t) => (!favsOnly || c.favorites.contains(t.path)) && (t.title.toLowerCase().contains(q.toLowerCase()) || (t.artist ?? '').toLowerCase().contains(q.toLowerCase())))
+        .where(
+          (t) =>
+              (!favsOnly || c.favorites.contains(t.path)) &&
+              (t.title.toLowerCase().contains(q.text.toLowerCase()) || (t.artist ?? '').toLowerCase().contains(q.text.toLowerCase())),
+        )
         .toList();
 
     return SafeArea(
@@ -28,16 +33,18 @@ class _LibraryPageState extends State<LibraryPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: TextField(
-              onChanged: (v) => setState(() => q = v),
+              controller: q,
+              onChanged: (v) => setState(() => q.text = v),
               decoration: InputDecoration(
                 hintText: 'Search songs',
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(
-                  icon: Icon(favsOnly ? Icons.favorite : Icons.favorite_border),
-                  tooltip: 'Favorites only',
-                  onPressed: () => setState(() => favsOnly = !favsOnly),
-                ),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(28)),
+                // suffixIcon: IconButton(
+                //   icon: Icon(favsOnly ? Icons.favorite : Icons.favorite_border),
+                //   tooltip: 'Favorites only',
+                //   onPressed: () => setState(() => favsOnly = !favsOnly),
+                // ),
+                suffixIcon: q.text.isNotEmpty ? IconButton(onPressed: () => setState(() => q.clear()), icon: Icon(Icons.clear)) : null,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
               ),
             ),
           ),
