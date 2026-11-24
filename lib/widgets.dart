@@ -61,7 +61,7 @@ class MiniPlayer extends StatelessWidget {
           context,
           MaterialPageRoute(builder: (_) => const NowPlayingPage()),
         ),
-        leading: TrackArtwork(bytes: t.artwork, size: 48),
+        leading: SpinningDisc(bytes: t.artwork, size: 52),
         title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
 
         trailing: Row(
