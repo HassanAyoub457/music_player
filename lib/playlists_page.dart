@@ -62,7 +62,14 @@ class PlaylistsPage extends StatelessWidget {
                         ),
                         trailing: PopupMenuButton<String>(
                           onSelected: (v) async {
-                            if (v == 'rename') {
+                            final tracks = c.tracksOf(n);
+                            if (v == 'play') {
+                              if (tracks.isNotEmpty) await c.playQueue(tracks, 0);
+                            } else if (v == 'play_next') {
+                              for (final track in tracks.reversed) {
+                                await c.playNext(track);
+                              }
+                            } else if (v == 'rename') {
                               final nn = await askName(
                                 context,
                                 title: 'Rename playlist',
