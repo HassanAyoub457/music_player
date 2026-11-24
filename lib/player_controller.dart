@@ -66,6 +66,8 @@ class PlayerController extends ChangeNotifier {
     '.opus',
     '.webm',
     '.mkv',
+    '.mp4',
+    '.m4v',
   };
 
   static bool _isWhatsAppAudioPath(String path) {
@@ -73,7 +75,27 @@ class PlayerController extends ChangeNotifier {
     return parts.any((part) => part.contains('whatsapp'));
   }
 
+  /// Where new downloads go: a normal shared folder (Music/Seal Player) that
+  /// any file manager can open. Falls back to the app's private folder if the
+  /// app isn't allowed to write there (e.g. all-files access not granted).
   static Future<Directory> downloadDir() async {
+    if (Platform.isAndroid) {
+      final shared = Directory('/storage/emulated/0/Music/Seal Player');
+      try {
+        await shared.create(recursive: true);
+        final probe = File(p.join(shared.path, '.write_test'));
+        await probe.writeAsString('');
+        await probe.delete();
+        return shared;
+      } catch (e) {
+        debugPrint('downloadDir: shared folder not writable, using private: $e');
+      }
+    }
+    return _privateMusicDir();
+  }
+
+  /// App-private folder used by earlier versions (hidden inside Android/data).
+  static Future<Directory> _privateMusicDir() async {
     final base =
         await getExternalStorageDirectory() ??
         await getApplicationDocumentsDirectory();
@@ -160,6 +182,7 @@ class PlayerController extends ChangeNotifier {
 
     final roots = [
       await downloadDir(),
+      await _privateMusicDir(), // older downloads
       Directory('/storage/emulated/0/Music'),
       Directory('/storage/emulated/0/Download'),
       Directory('/storage/emulated/0/Download/Seal/Audio'),
