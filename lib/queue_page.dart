@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'player_controller.dart';
 import 'track_artwork.dart';
@@ -11,12 +12,51 @@ class QueuePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.watch<PlayerController>();
     final current = c.player.currentIndex;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: Text('Queue (${c.queue.length})')),
-      body: c.queue.isEmpty
-          ? const Center(child: Text('The queue is empty'))
-          : ReorderableListView.builder(
+      appBar: AppBar(
+        title: const Text('Playing queue'),
+        actions: [
+          IconButton(
+            tooltip: c.player.shuffleModeEnabled ? 'Turn shuffle off' : 'Turn shuffle on',
+            color: c.player.shuffleModeEnabled ? cs.primary : null,
+            icon: const Icon(Icons.shuffle),
+            onPressed: c.toggleShuffle,
+          ),
+          IconButton(
+            tooltip: c.player.loopMode == LoopMode.off ? 'Turn loop on' : 'Turn loop off',
+            color: c.player.loopMode == LoopMode.off ? null : cs.primary,
+            icon: Icon(c.player.loopMode == LoopMode.one ? Icons.repeat_one : Icons.repeat),
+            onPressed: c.cycleLoop,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 8, 4),
+            child: Row(
+              children: [
+                Text('${current == null ? 0 : current + 1}/${c.queue.length}'),
+                const Spacer(),
+                IconButton(
+                  tooltip: 'Select songs',
+                  icon: const Icon(Icons.checklist),
+                  onPressed: null,
+                ),
+                IconButton(
+                  tooltip: 'Clear queue',
+                  icon: const Icon(Icons.clear_all),
+                  onPressed: c.queue.isEmpty ? null : c.clearQueue,
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: c.queue.isEmpty
+                ? const Center(child: Text('The queue is empty'))
+                : ReorderableListView.builder(
               buildDefaultDragHandles: false,
               itemCount: c.queue.length,
               onReorderItem: (from, to) {
@@ -65,6 +105,9 @@ class QueuePage extends StatelessWidget {
                 );
               },
             ),
+          ),
+        ],
+      ),
     );
   }
 }

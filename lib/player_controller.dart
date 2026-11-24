@@ -315,6 +315,16 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> clearQueue() async {
+    final src = _source;
+    if (src == null || queue.isEmpty) return;
+    await player.stop();
+    await src.clear();
+    queue.clear();
+    _source = null;
+    notifyListeners();
+  }
+
   Future<void> jumpTo(int i) async {
     await player.seek(Duration.zero, index: i);
     unawaited(player.play());
