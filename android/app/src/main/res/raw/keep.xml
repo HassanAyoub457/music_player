@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Release builds shrink unused resources. audio_service looks its notification
+  button icons (play, pause, next, previous...) up by name at runtime, so the
+  shrinker thinks they are unused and deletes them, and the notification ends
+  up without controls. Keep them.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/audio_service_*" />
