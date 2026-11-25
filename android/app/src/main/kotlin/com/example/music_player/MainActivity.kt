@@ -60,23 +60,45 @@ class MainActivity : AudioServiceActivity() {
                                 emit(mapOf("id" to id, "type" to "title", "title" to (info.title ?: url)))
                             } catch (_: Exception) {}
 
-                            val req = YoutubeDLRequest(url)
-                            req.addOption("--no-playlist")
-                            req.addOption("--no-mtime")
-                            req.addOption("-o", "$outDir/%(title).150B.%(ext)s")
-                            if (audioOnly) {
-                                req.addOption("-f", "bestaudio/best")
-                                req.addOption("-x")
-                                req.addOption("--audio-format", format)
+                            fun buildRequest(withThumbnail: Boolean): YoutubeDLRequest {
+                                val req = YoutubeDLRequest(url)
+                                req.addOption("--no-playlist")
+                                req.addOption("--no-mtime")
+                                req.addOption("-o", "$outDir/%(title).150B.%(ext)s")
                                 req.addOption("--embed-metadata")
-                            } else {
-                                req.addOption("-f", "bv*[height<=1080]+ba/b")
-                                req.addOption("--merge-output-format", "mp4")
+                                if (withThumbnail) {
+                                    // Cover art inside the file, cropped to a square.
+                                    req.addOption("--embed-thumbnail")
+                                    req.addOption("--convert-thumbnails", "jpg")
+                                    req.addOption(
+                                        "--ppa",
+                                        "ThumbnailsConvertor+ffmpeg_o:-c:v mjpeg -vf crop=\"'if(gt(ih,iw),iw,ih)':'if(gt(iw,ih),ih,iw)'\""
+                                    )
+                                }
+                                if (audioOnly) {
+                                    req.addOption("-f", "bestaudio/best")
+                                    req.addOption("-x")
+                                    req.addOption("--audio-format", format)
+                                } else {
+                                    req.addOption("-f", "bv*[height<=1080]+ba/b")
+                                    req.addOption("--merge-output-format", "mp4")
+                                }
+                                return req
                             }
 
-                            YoutubeDL.getInstance().execute(req, id) { progress, eta, _ ->
+                            val onProgress: (Float, Long, String) -> Unit = { progress, eta, _ ->
                                 emit(mapOf("id" to id, "type" to "progress",
                                     "progress" to progress.toDouble(), "eta" to eta))
+                            }
+
+                            try {
+                                YoutubeDL.getInstance().execute(buildRequest(true), id, onProgress)
+                            } catch (e: YoutubeDL.CanceledException) {
+                                throw e
+                            } catch (e: Exception) {
+                                // Thumbnail step can fail for some formats; the song is
+                                // still worth having, so retry without cover art.
+                                YoutubeDL.getInstance().execute(buildRequest(false), id, onProgress)
                             }
                             emit(mapOf("id" to id, "type" to "done"))
                         } catch (e: Exception) {

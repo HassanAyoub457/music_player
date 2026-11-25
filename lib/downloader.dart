@@ -10,6 +10,7 @@ class DownloadJob {
   double progress = 0;
   String status = 'Starting…';
   bool done = false, failed = false, cancelled = false;
+  String outDir = '';
   DownloadJob(this.id, this.url) : title = url;
 }
 
@@ -50,6 +51,7 @@ class Downloader extends ChangeNotifier {
     jobs[id] = DownloadJob(id, url);
     notifyListeners();
     final dir = await PlayerController.downloadDir();
+    jobs[id]!.outDir = dir.path;
     try {
       await _m.invokeMethod('download', {
         'id': id,
@@ -113,7 +115,7 @@ class Downloader extends ChangeNotifier {
       case 'done':
         j.done = true;
         j.progress = 1;
-        j.status = 'Done';
+        j.status = j.outDir.isEmpty ? 'Done' : 'Done · saved to ${j.outDir}';
         onFinished?.call();
       case 'error':
         if (!j.cancelled) {
