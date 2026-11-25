@@ -23,6 +23,7 @@ class Track {
   Duration? duration;
   int? bitrate;
   Uint8List? artwork;
+  Uri? artUri; // cover saved as a file, handed to the media notification
   Track(this.path) : title = p.basenameWithoutExtension(path);
 
   Track clone() => Track(path)
@@ -33,7 +34,8 @@ class Track {
     ..genre = genre
     ..duration = duration
     ..bitrate = bitrate
-    ..artwork = artwork;
+    ..artwork = artwork
+    ..artUri = artUri;
 }
 
 class PlayerController extends ChangeNotifier {
@@ -145,6 +147,22 @@ class PlayerController extends ChangeNotifier {
     );
   }
 
+  Directory? _artDir;
+
+  /// Saves a cover to the cache folder (once per distinct image) so the
+  /// notification can load it by file URI. Returns null if it can't be saved.
+  Future<Uri?> _artUriFor(Uint8List bytes) async {
+    try {
+      _artDir ??= await Directory(p.join((await getTemporaryDirectory()).path, 'notif_art')).create(recursive: true);
+      final file = File(p.join(_artDir!.path, '${bytes.length}_${Object.hashAll(bytes)}.img'));
+      if (!await file.exists()) await file.writeAsBytes(bytes, flush: true);
+      return Uri.file(file.path);
+    } catch (e) {
+      debugPrint('notification art not saved: $e');
+      return null;
+    }
+  }
+
   String _artKey(Uint8List b) {
     var h = b.length;
     final step = max(1, b.length ~/ 64);
@@ -209,6 +227,7 @@ class PlayerController extends ChangeNotifier {
       if (md.pictures.isNotEmpty) {
         final full = md.pictures.first.bytes;
         t.artwork = useThumbs ? await _thumbFor(full) : full;
+        t.artUri = await _artUriFor(full);
       }
     } catch (_) {
       // unsupported format or no tags: filename fallback
@@ -269,7 +288,7 @@ class PlayerController extends ChangeNotifier {
 
   AudioSource _src(Track t) => AudioSource.uri(
     Uri.file(t.path),
-    tag: MediaItem(id: t.path, title: t.title, artist: t.artist, album: t.album),
+    tag: MediaItem(id: t.path, title: t.title, artist: t.artist, album: t.album, artUri: t.artUri),
   );
 
   Future<void> playQueue(List<Track> tracks, int index) async {
@@ -634,11 +653,16 @@ class PlayerController extends ChangeNotifier {
       });
     });
     final thumb = useThumbs ? (await _thumbFor(bytes) ?? bytes) : bytes;
+    final artUri = await _artUriFor(bytes);
     track.artwork = thumb;
+    track.artUri = artUri;
     _fullArt[track.path] = Future.value(bytes);
     _cache[track.path] = track;
     for (final item in [...library, ...queue]) {
-      if (item.path == track.path) item.artwork = thumb;
+      if (item.path == track.path) {
+        item.artwork = thumb;
+        item.artUri = artUri;
+      }
     }
     notifyListeners();
   }
@@ -653,7 +677,8 @@ class PlayerController extends ChangeNotifier {
       ..genre = refreshed.genre
       ..duration = refreshed.duration
       ..bitrate = refreshed.bitrate
-      ..artwork = refreshed.artwork;
+      ..artwork = refreshed.artwork
+      ..artUri = refreshed.artUri;
     _cache[track.path] = track;
     notifyListeners();
   }
