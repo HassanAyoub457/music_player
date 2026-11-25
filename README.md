@@ -86,3 +86,10 @@ dart run flutter_launcher_icons
 - [audio_metadata_reader](https://pub.dev/packages/audio_metadata_reader) for tags and cover art
 - [youtubedl-android](https://github.com/yausername/youtubedl-android) (yt-dlp and FFmpeg), the same engine used by
   [Seal](https://github.com/junkfood02/Seal)
+
+## Credits
+
+- App icon by [Icon Place](https://www.flaticon.com/authors/icon-place) from [Flaticon](https://www.flaticon.com)
+- Downloading is powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [FFmpeg](https://ffmpeg.org) through
+  [youtubedl-android](https://github.com/yausername/youtubedl-android), the same library [Seal](https://github.com/junkfood02/Seal)
+  is built on. This app is an independent project and is not affiliated with Seal, yt-dlp or their authors.
