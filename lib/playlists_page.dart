@@ -43,10 +43,7 @@ class PlaylistsPage extends StatelessWidget {
                 ? const Center(
                     child: Padding(
                       padding: EdgeInsets.all(32),
-                      child: Text(
-                        'No playlists yet.\nTap New, or use ⋮ on a song → Add to playlist.',
-                        textAlign: TextAlign.center,
-                      ),
+                      child: Text('No playlists yet.\nTap New, or use ⋮ on a song → Add to playlist.', textAlign: TextAlign.center),
                     ),
                   )
                 : ListView.builder(
@@ -57,10 +54,7 @@ class PlaylistsPage extends StatelessWidget {
                         leading: const Icon(Icons.queue_music),
                         title: Text(n),
                         subtitle: Text('${c.tracksOf(n).length} songs'),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => PlaylistDetailPage(name: n)),
-                        ),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlaylistDetailPage(name: n))),
                         trailing: PopupMenuButton<String>(
                           onSelected: (v) async {
                             final tracks = c.tracksOf(n);
@@ -68,12 +62,7 @@ class PlaylistsPage extends StatelessWidget {
                               if (tracks.isNotEmpty) {
                                 await c.playQueue(tracks, 0);
                                 if (context.mounted) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const NowPlayingPage(),
-                                    ),
-                                  );
+                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const NowPlayingPage()));
                                 }
                               }
                             } else if (v == 'play_next') {
@@ -81,11 +70,7 @@ class PlaylistsPage extends StatelessWidget {
                                 await c.playNext(track);
                               }
                             } else if (v == 'rename') {
-                              final nn = await askName(
-                                context,
-                                title: 'Rename playlist',
-                                initial: n,
-                              );
+                              final nn = await askName(context, title: 'Rename playlist', initial: n);
                               if (nn == null || nn == n) return;
                               final ok = await c.renamePlaylist(n, nn);
                               if (!ok && context.mounted) {
@@ -122,15 +107,12 @@ class PlaylistDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.watch<PlayerController>();
     final tracks = c.tracksOf(name);
-    void addSongs() =>
-        Navigator.push(context, MaterialPageRoute(builder: (_) => PickSongsPage(playlist: name)));
+    void addSongs() => Navigator.push(context, MaterialPageRoute(builder: (_) => PickSongsPage(playlist: name)));
 
     return Scaffold(
       appBar: AppBar(
         title: Text(name),
-        actions: [
-          IconButton(icon: const Icon(Icons.add), tooltip: 'Add songs', onPressed: addSongs),
-        ],
+        actions: [IconButton(icon: const Icon(Icons.add), tooltip: 'Add songs', onPressed: addSongs)],
       ),
       body: tracks.isEmpty
           ? Center(
@@ -139,11 +121,7 @@ class PlaylistDetailPage extends StatelessWidget {
                 children: [
                   const Text('This playlist is empty'),
                   const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: addSongs,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add songs'),
-                  ),
+                  FilledButton.icon(onPressed: addSongs, icon: const Icon(Icons.add), label: const Text('Add songs')),
                 ],
               ),
             )
@@ -159,10 +137,7 @@ class PlaylistDetailPage extends StatelessWidget {
                         onPressed: () async {
                           await c.playQueue(tracks, 0);
                           if (context.mounted) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const NowPlayingPage()),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const NowPlayingPage()));
                           }
                         },
                       ),
@@ -173,10 +148,7 @@ class PlaylistDetailPage extends StatelessWidget {
                         onPressed: () async {
                           await c.playShuffled(tracks);
                           if (context.mounted) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const NowPlayingPage()),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const NowPlayingPage()));
                           }
                         },
                       ),
@@ -186,21 +158,15 @@ class PlaylistDetailPage extends StatelessWidget {
                 Expanded(
                   child: ReorderableListView.builder(
                     itemCount: tracks.length,
-                    onReorderItem: (oldIndex, newIndex) =>
-                        c.reorderPlaylist(name, oldIndex, newIndex),
+                    onReorderItem: (oldIndex, newIndex) => c.reorderPlaylist(name, oldIndex, newIndex),
                     itemBuilder: (context, i) {
                       final t = tracks[i];
                       final playing = c.current?.path == t.path;
                       return ListTile(
                         key: ValueKey(t.path),
-                        leading: TrackArtwork(
-                          bytes: t.artwork,
-                          playing: playing,
-                        ),
+                        leading: TrackArtwork(bytes: t.artwork, playing: playing),
                         title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        subtitle: t.artist == null
-                            ? null
-                            : Text(t.artist!, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: t.artist == null ? null : Text(t.artist!, maxLines: 1, overflow: TextOverflow.ellipsis),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -210,10 +176,7 @@ class PlaylistDetailPage extends StatelessWidget {
                             ),
                             ReorderableDragStartListener(
                               index: i,
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 12),
-                                child: Icon(Icons.drag_handle),
-                              ),
+                              child: const Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: Icon(Icons.drag_handle)),
                             ),
                           ],
                         ),
@@ -245,13 +208,7 @@ class _PickSongsPageState extends State<PickSongsPage> {
   Widget build(BuildContext context) {
     final c = context.watch<PlayerController>();
     final existing = c.playlists[widget.playlist] ?? const <String>[];
-    final list = c.library
-        .where(
-          (t) =>
-              t.title.toLowerCase().contains(q.toLowerCase()) ||
-              (t.artist ?? '').toLowerCase().contains(q.toLowerCase()),
-        )
-        .toList();
+    final list = c.library.where((t) => t.title.toLowerCase().contains(q.toLowerCase()) || (t.artist ?? '').toLowerCase().contains(q.toLowerCase())).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -289,15 +246,9 @@ class _PickSongsPageState extends State<PickSongsPage> {
                 final already = existing.contains(t.path);
                 return CheckboxListTile(
                   value: already || selected.contains(t.path),
-                  onChanged: already
-                      ? null
-                      : (v) => setState(
-                          () => v == true ? selected.add(t.path) : selected.remove(t.path),
-                        ),
+                  onChanged: already ? null : (v) => setState(() => v == true ? selected.add(t.path) : selected.remove(t.path)),
                   title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: t.artist == null
-                      ? null
-                      : Text(t.artist!, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  subtitle: t.artist == null ? null : Text(t.artist!, maxLines: 1, overflow: TextOverflow.ellipsis),
                 );
               },
             ),

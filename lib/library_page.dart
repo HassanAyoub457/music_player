@@ -63,20 +63,14 @@ class _LibraryPageState extends State<LibraryPage> {
             child: Row(
               children: [
                 if (selectedPaths.isNotEmpty) ...[
-                  IconButton(
-                    tooltip: 'Cancel selection',
-                    icon: const Icon(Icons.close),
-                    onPressed: _exitSelection,
-                  ),
+                  IconButton(tooltip: 'Cancel selection', icon: const Icon(Icons.close), onPressed: _exitSelection),
                   Text('${selectedPaths.length} selected'),
                   const Spacer(),
                   IconButton(
                     tooltip: 'Hide selected songs',
                     icon: const Icon(Icons.visibility_off_outlined),
                     onPressed: () async {
-                      final selected = c.library
-                          .where((track) => selectedPaths.contains(track.path))
-                          .toList();
+                      final selected = c.library.where((track) => selectedPaths.contains(track.path)).toList();
                       await c.hideTracks(selected);
                       if (mounted) _exitSelection();
                     },
@@ -112,9 +106,7 @@ class _LibraryPageState extends State<LibraryPage> {
                               return ListTile(
                                 selected: selected,
                                 selectedTileColor: Theme.of(context).colorScheme.secondaryContainer,
-                                leading: selected
-                                    ? const CircleAvatar(child: Icon(Icons.check))
-                                    : TrackArtwork(bytes: t.artwork, playing: playing),
+                                leading: selected ? const CircleAvatar(child: Icon(Icons.check)) : TrackArtwork(bytes: t.artwork, playing: playing),
                                 title: Text(
                                   t.title,
                                   maxLines: 1,
@@ -122,12 +114,8 @@ class _LibraryPageState extends State<LibraryPage> {
                                   style: playing ? const TextStyle(color: Colors.yellow) : null,
                                 ),
                                 subtitle: t.artist == null ? null : Text(t.artist!, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                trailing: selectedPaths.isEmpty
-                                    ? IconButton(icon: const Icon(Icons.more_vert), onPressed: () => showTrackOptions(context, t))
-                                    : null,
-                                onTap: () => selectedPaths.isNotEmpty
-                                    ? _toggleSelection(t.path)
-                                    : c.playQueue(list, i),
+                                trailing: selectedPaths.isEmpty ? IconButton(icon: const Icon(Icons.more_vert), onPressed: () => showTrackOptions(context, t)) : null,
+                                onTap: () => selectedPaths.isNotEmpty ? _toggleSelection(t.path) : c.playQueue(list, i),
                                 onLongPress: () => _toggleSelection(t.path),
                               );
                             },

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui' as ui;
+
 import 'package:audio_metadata_reader/audio_metadata_reader.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
@@ -47,6 +49,14 @@ class PlayerController extends ChangeNotifier {
   bool _rescanQueued = false;
   bool _askedStorage = false;
   final Map<String, Track> _cache = {}; // path -> track with tags read
+  // Small list thumbnails, shared between tracks with the same cover.
+  final Map<String, Future<Uint8List?>> _thumbs = {};
+  // Full-size cover, only kept for the few tracks that were shown big.
+  final Map<String, Future<Uint8List?>> _fullArt = {};
+  static const _thumbPx = 160; // list/mini-player covers are <= 52 dp
+  // Thumbnails need a GPU read-back per cover, which stalled the raster thread
+  // in the profile trace, so they are off unless built with --dart-define=ART_THUMBS=true
+  static const useThumbs = bool.fromEnvironment('ART_THUMBS');
   int? sleepMinutes;
   Timer? _sleep;
 
@@ -57,19 +67,7 @@ class PlayerController extends ChangeNotifier {
   List<Track>? _originalOrder; // queue order from before shuffle was turned on
   bool _reordering = false;
 
-  static const _exts = {
-    '.mp3',
-    '.m4a',
-    '.aac',
-    '.flac',
-    '.wav',
-    '.ogg',
-    '.opus',
-    '.webm',
-    '.mkv',
-    '.mp4',
-    '.m4v',
-  };
+  static const _exts = {'.mp3', '.m4a', '.aac', '.flac', '.wav', '.ogg', '.opus', '.webm', '.mkv', '.mp4', '.m4v'};
 
   static bool _isWhatsAppAudioPath(String path) {
     final parts = p.split(p.normalize(path)).map((part) => part.toLowerCase());
@@ -97,9 +95,7 @@ class PlayerController extends ChangeNotifier {
 
   /// App-private folder used by earlier versions (hidden inside Android/data).
   static Future<Directory> _privateMusicDir() async {
-    final base =
-        await getExternalStorageDirectory() ??
-        await getApplicationDocumentsDirectory();
+    final base = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
     final d = Directory(p.join(base.path, 'Music'));
     await d.create(recursive: true);
     return d;
@@ -117,8 +113,7 @@ class PlayerController extends ChangeNotifier {
     final raw = prefs.getString('playlists');
     if (raw != null) {
       try {
-        playlists = (jsonDecode(raw) as Map<String, dynamic>)
-            .map((k, v) => MapEntry(k, List<String>.from(v as List)));
+        playlists = (jsonDecode(raw) as Map<String, dynamic>).map((k, v) => MapEntry(k, List<String>.from(v as List)));
       } catch (_) {}
     }
     player.currentIndexStream.listen((_) => notifyListeners());
@@ -146,6 +141,47 @@ class PlayerController extends ChangeNotifier {
     );
   }
 
+  String _artKey(Uint8List b) {
+    var h = b.length;
+    final step = max(1, b.length ~/ 64);
+    for (var i = 0; i < b.length; i += step) {
+      h = (h * 31 + b[i]) & 0x3fffffff;
+    }
+    return '${b.length}:$h';
+  }
+
+  /// Downscaled copy of an embedded cover. Decoding happens on the engine's
+  /// worker thread, and tracks sharing one album cover share one thumbnail.
+  Future<Uint8List?> _thumbFor(Uint8List full) => _thumbs.putIfAbsent(_artKey(full), () async {
+    try {
+      final codec = await ui.instantiateImageCodec(full, targetWidth: _thumbPx);
+      try {
+        final frame = await codec.getNextFrame();
+        final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+        frame.image.dispose();
+        return data?.buffer.asUint8List();
+      } finally {
+        codec.dispose();
+      }
+    } catch (_) {
+      return null;
+    }
+  });
+
+  /// Full-size cover for the big Now Playing image, read lazily.
+  Future<Uint8List?> fullArtwork(Track t) {
+    if (_fullArt.length > 3) _fullArt.remove(_fullArt.keys.first);
+    return _fullArt.putIfAbsent(t.path, () async {
+      await Future<void>.delayed(Duration.zero); // never block a build
+      try {
+        final md = readMetadata(File(t.path), getImage: true);
+        return md.pictures.isEmpty ? null : md.pictures.first.bytes;
+      } catch (_) {
+        return null;
+      }
+    });
+  }
+
   /// Uses the embedded title/artist/album tags when present,
   /// otherwise keeps the filename as the title.
   Future<Track> _load(String path) async {
@@ -165,7 +201,11 @@ class PlayerController extends ChangeNotifier {
       t.genre = md.genres.isEmpty ? null : md.genres.join(', ');
       t.duration = md.duration;
       t.bitrate = md.bitrate;
-      if (md.pictures.isNotEmpty) t.artwork = md.pictures.first.bytes;
+      // `artwork` is only the small thumbnail; the full image is not kept.
+      if (md.pictures.isNotEmpty) {
+        final full = md.pictures.first.bytes;
+        t.artwork = useThumbs ? await _thumbFor(full) : full;
+      }
     } catch (_) {
       // unsupported format or no tags: filename fallback
     }
@@ -198,9 +238,7 @@ class PlayerController extends ChangeNotifier {
           continue;
         }
         await for (final e in dir.list(recursive: true, followLinks: false)) {
-            if (e is File &&
-              !_isWhatsAppAudioPath(e.path) &&
-              _exts.contains(p.extension(e.path).toLowerCase())) {
+          if (e is File && !_isWhatsAppAudioPath(e.path) && _exts.contains(p.extension(e.path).toLowerCase())) {
             found.add(e.path);
           }
         }
@@ -214,8 +252,7 @@ class PlayerController extends ChangeNotifier {
       tracks.add(_cache[path] ??= await _load(path));
       if (++n % 20 == 0) await Future.delayed(Duration.zero); // keep UI smooth
     }
-    library = tracks
-      ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    library = tracks..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
     _index = {for (final t in library) t.path: t};
     scanning = false;
     notifyListeners();
@@ -227,14 +264,9 @@ class PlayerController extends ChangeNotifier {
   }
 
   AudioSource _src(Track t) => AudioSource.uri(
-        Uri.file(t.path),
-        tag: MediaItem(
-          id: t.path,
-          title: t.title,
-          artist: t.artist,
-          album: t.album,
-        ),
-      );
+    Uri.file(t.path),
+    tag: MediaItem(id: t.path, title: t.title, artist: t.artist, album: t.album),
+  );
 
   Future<void> playQueue(List<Track> tracks, int index) async {
     if (tracks.isEmpty) return;
@@ -305,7 +337,10 @@ class PlayerController extends ChangeNotifier {
     }
     final now = queue[cur];
     final inQueue = Set<Track>.identity()..addAll(queue);
-    final ordered = [for (final t in orig) if (inQueue.contains(t)) t];
+    final ordered = [
+      for (final t in orig)
+        if (inQueue.contains(t)) t,
+    ];
     final known = Set<Track>.identity()..addAll(ordered);
     ordered.addAll(queue.where((t) => !known.contains(t)));
     final k = ordered.indexWhere((t) => identical(t, now));
@@ -346,13 +381,8 @@ class PlayerController extends ChangeNotifier {
   }
 
   Future<void> toggleFavorite(Track t) async {
-    favorites.contains(t.path)
-        ? favorites.remove(t.path)
-        : favorites.add(t.path);
-    (await SharedPreferences.getInstance()).setStringList(
-      'fav',
-      favorites.toList(),
-    );
+    favorites.contains(t.path) ? favorites.remove(t.path) : favorites.add(t.path);
+    (await SharedPreferences.getInstance()).setStringList('fav', favorites.toList());
     notifyListeners();
   }
 
@@ -447,13 +477,12 @@ class PlayerController extends ChangeNotifier {
 
   // ---------------- playlists ----------------
 
-  Future<void> _savePlaylists() async => (await SharedPreferences.getInstance())
-      .setString('playlists', jsonEncode(playlists));
+  Future<void> _savePlaylists() async => (await SharedPreferences.getInstance()).setString('playlists', jsonEncode(playlists));
 
   List<Track> tracksOf(String name) => [
-        for (final path in playlists[name] ?? const <String>[])
-          if (_index[path] != null) _index[path]!,
-      ];
+    for (final path in playlists[name] ?? const <String>[])
+      if (_index[path] != null) _index[path]!,
+  ];
 
   Future<bool> createPlaylist(String name, {Track? add}) async {
     name = name.trim();
@@ -467,9 +496,7 @@ class PlayerController extends ChangeNotifier {
   Future<bool> renamePlaylist(String old, String name) async {
     name = name.trim();
     if (name.isEmpty || playlists.containsKey(name)) return false;
-    playlists = {
-      for (final e in playlists.entries) (e.key == old ? name : e.key): e.value,
-    };
+    playlists = {for (final e in playlists.entries) (e.key == old ? name : e.key): e.value};
     await _savePlaylists();
     notifyListeners();
     return true;
@@ -507,19 +534,11 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> editTrackTags(
-    Track track, {
-    required String title,
-    required String artist,
-    required String album,
-    required String genre,
-  }) async {
+  Future<void> editTrackTags(Track track, {required String title, required String artist, required String album, required String genre}) async {
     final oldPath = track.path;
     final oldFile = File(oldPath);
     final cleanTitle = title.trim();
-    final newTitle = cleanTitle.isEmpty
-        ? p.basenameWithoutExtension(oldPath)
-        : cleanTitle.replaceAll(RegExp(r'[/\\]'), '_');
+    final newTitle = cleanTitle.isEmpty ? p.basenameWithoutExtension(oldPath) : cleanTitle.replaceAll(RegExp(r'[/\\]'), '_');
     final newPath = p.join(p.dirname(oldPath), '$newTitle${p.extension(oldPath)}');
     final pathChanged = p.normalize(newPath) != p.normalize(oldPath);
 
@@ -548,6 +567,7 @@ class PlayerController extends ChangeNotifier {
       if (favorites.remove(oldPath)) favorites.add(newPath);
       if (hiddenTracks.remove(oldPath)) hiddenTracks.add(newPath);
       _cache.remove(oldPath);
+      _fullArt.remove(oldPath);
       track.path = newPath;
     }
 
@@ -594,10 +614,12 @@ class PlayerController extends ChangeNotifier {
         metadata.setPictures([Picture(bytes, mime, PictureType.coverFront)]);
       });
     });
-    track.artwork = bytes;
+    final thumb = useThumbs ? (await _thumbFor(bytes) ?? bytes) : bytes;
+    track.artwork = thumb;
+    _fullArt[track.path] = Future.value(bytes);
     _cache[track.path] = track;
     for (final item in [...library, ...queue]) {
-      if (item.path == track.path) item.artwork = bytes;
+      if (item.path == track.path) item.artwork = thumb;
     }
     notifyListeners();
   }

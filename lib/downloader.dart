@@ -42,24 +42,14 @@ class Downloader extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> start(
-    String url, {
-    required bool audio,
-    required String format,
-  }) async {
+  Future<void> start(String url, {required bool audio, required String format}) async {
     final id = DateTime.now().microsecondsSinceEpoch.toString();
     jobs[id] = DownloadJob(id, url);
     notifyListeners();
     final dir = await PlayerController.downloadDir();
     jobs[id]!.outDir = dir.path;
     try {
-      await _m.invokeMethod('download', {
-        'id': id,
-        'url': url,
-        'audioOnly': audio,
-        'format': format,
-        'outDir': dir.path,
-      });
+      await _m.invokeMethod('download', {'id': id, 'url': url, 'audioOnly': audio, 'format': format, 'outDir': dir.path});
     } on PlatformException catch (e) {
       jobs[id]!
         ..failed = true

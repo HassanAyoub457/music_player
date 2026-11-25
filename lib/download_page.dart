@@ -34,10 +34,7 @@ class _DownloadPageState extends State<DownloadPage> {
           if (d.initError != null)
             Card(
               color: Theme.of(context).colorScheme.errorContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text('yt-dlp failed to start: ${d.initError}'),
-              ),
+              child: Padding(padding: const EdgeInsets.all(12), child: Text('yt-dlp failed to start: ${d.initError}')),
             ),
           TextField(
             controller: url,
@@ -58,16 +55,8 @@ class _DownloadPageState extends State<DownloadPage> {
           const SizedBox(height: 12),
           SegmentedButton<bool>(
             segments: const [
-              ButtonSegment(
-                value: true,
-                label: Text('Audio'),
-                icon: Icon(Icons.audiotrack),
-              ),
-              ButtonSegment(
-                value: false,
-                label: Text('Video'),
-                icon: Icon(Icons.videocam),
-              ),
+              ButtonSegment(value: true, label: Text('Audio'), icon: Icon(Icons.audiotrack)),
+              ButtonSegment(value: false, label: Text('Video'), icon: Icon(Icons.videocam)),
             ],
             selected: {audio},
             onSelectionChanged: (s) => setState(() => audio = s.first),
@@ -77,13 +66,8 @@ class _DownloadPageState extends State<DownloadPage> {
               padding: const EdgeInsets.only(top: 12),
               child: DropdownButtonFormField<String>(
                 initialValue: format,
-                decoration: const InputDecoration(
-                  labelText: 'Audio format',
-                  border: OutlineInputBorder(),
-                ),
-                items: const ['mp3', 'm4a', 'opus', 'flac']
-                    .map((f) => DropdownMenuItem(value: f, child: Text(f)))
-                    .toList(),
+                decoration: const InputDecoration(labelText: 'Audio format', border: OutlineInputBorder()),
+                items: const ['mp3', 'm4a', 'opus', 'flac'].map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
                 onChanged: (v) => setState(() => format = v!),
               ),
             ),
@@ -104,47 +88,27 @@ class _DownloadPageState extends State<DownloadPage> {
           if (jobs.isNotEmpty)
             Row(
               children: [
-                Text(
-                  'Downloads',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text('Downloads', style: Theme.of(context).textTheme.titleMedium),
                 const Spacer(),
-                TextButton(
-                  onPressed: d.clearFinished,
-                  child: const Text('Clear finished'),
-                ),
+                TextButton(onPressed: d.clearFinished, child: const Text('Clear finished')),
               ],
             ),
           for (final j in jobs)
             Card(
               child: ListTile(
-                title: Text(
-                  j.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                title: Text(j.title, maxLines: 2, overflow: TextOverflow.ellipsis),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 6),
-                    if (!j.done && !j.failed && !j.cancelled)
-                      LinearProgressIndicator(
-                        value: j.progress > 0 ? j.progress : null,
-                      ),
+                    if (!j.done && !j.failed && !j.cancelled) LinearProgressIndicator(value: j.progress > 0 ? j.progress : null),
                     const SizedBox(height: 4),
-                    Text(
-                      j.status,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    Text(j.status, maxLines: 2, overflow: TextOverflow.ellipsis),
                   ],
                 ),
                 trailing: (j.done || j.failed || j.cancelled)
                     ? Icon(j.done ? Icons.check_circle : Icons.error_outline)
-                    : IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => d.cancel(j.id),
-                      ),
+                    : IconButton(icon: const Icon(Icons.close), onPressed: () => d.cancel(j.id)),
               ),
             ),
         ],
