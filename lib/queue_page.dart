@@ -97,7 +97,7 @@ class _QueuePageState extends State<QueuePage> {
             padding: const EdgeInsets.fromLTRB(16, 0, 8, 4),
             child: Row(
               children: [
-                Text('${current == null ? 0 : current + 1}/${c.queue.length}'),
+                Text('${(current == null || c.queue.isEmpty) ? 0 : current + 1}/${c.queue.length}'),
                 const Spacer(),
                 IconButton(
                   tooltip: 'Select songs',
