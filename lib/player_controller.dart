@@ -66,6 +66,7 @@ class PlayerController extends ChangeNotifier {
   bool shuffled = false;
   List<Track>? _originalOrder; // queue order from before shuffle was turned on
   bool _reordering = false;
+  Track? _pinned; // shown as the current song while the queue is being rebuilt
 
   static const _exts = {'.mp3', '.m4a', '.aac', '.flac', '.wav', '.ogg', '.opus', '.webm', '.mkv', '.mp4', '.m4v'};
 
@@ -102,6 +103,7 @@ class PlayerController extends ChangeNotifier {
   }
 
   Track? get current {
+    if (_pinned != null) return _pinned;
     final i = player.currentIndex;
     return (i != null && i < queue.length) ? queue[i] : null;
   }
@@ -116,7 +118,9 @@ class PlayerController extends ChangeNotifier {
         playlists = (jsonDecode(raw) as Map<String, dynamic>).map((k, v) => MapEntry(k, List<String>.from(v as List)));
       } catch (_) {}
     }
-    player.currentIndexStream.listen((_) => notifyListeners());
+    player.currentIndexStream.listen((_) {
+      if (_pinned == null) notifyListeners(); // ignore index churn while reordering
+    });
     player.shuffleModeEnabledStream.listen((_) => notifyListeners());
     player.loopModeStream.listen((_) => notifyListeners());
     player.speedStream.listen((_) => notifyListeners());
@@ -270,10 +274,21 @@ class PlayerController extends ChangeNotifier {
 
   Future<void> playQueue(List<Track> tracks, int index) async {
     if (tracks.isEmpty) return;
-    final nextQueue = List<Track>.of(tracks);
+    var nextQueue = List<Track>.of(tracks);
+    var startIndex = index;
+    List<Track>? original;
+    if (shuffled && nextQueue.length > 1 && index >= 0 && index < nextQueue.length) {
+      // Shuffle before building the source so the list never shows an
+      // in-between order: chosen song first, everything else random.
+      original = List<Track>.of(nextQueue);
+      final first = nextQueue.removeAt(index);
+      nextQueue.shuffle();
+      nextQueue.insert(0, first);
+      startIndex = 0;
+    }
     final src = ConcatenatingAudioSource(children: [for (final t in nextQueue) _src(t)]);
     try {
-      await player.setAudioSource(src, initialIndex: index);
+      await player.setAudioSource(src, initialIndex: startIndex);
     } on PlayerException catch (e) {
       debugPrint('Unable to load track: ${e.message}');
       return;
@@ -283,10 +298,9 @@ class PlayerController extends ChangeNotifier {
     }
     queue = nextQueue;
     _source = src;
-    _originalOrder = null;
+    _originalOrder = original;
     notifyListeners();
     unawaited(player.play());
-    if (shuffled) await _shuffleQueue(); // shuffle stays on for new queues
   }
 
   Future<void> playShuffled(List<Track> tracks) async {
@@ -354,11 +368,16 @@ class PlayerController extends ChangeNotifier {
     final cur = player.currentIndex;
     if (src == null || cur == null || cur < 0 || cur >= queue.length) return;
     final now = queue[cur];
-    if (cur + 1 < queue.length) await src.removeRange(cur + 1, queue.length);
-    if (cur > 0) await src.removeRange(0, cur);
-    if (before.isNotEmpty) await src.insertAll(0, [for (final t in before) _src(t)]);
-    if (after.isNotEmpty) await src.addAll([for (final t in after) _src(t)]);
-    queue = [...before, now, ...after];
+    _pinned = now; // keep the UI on this song while the source is rewritten
+    try {
+      if (cur + 1 < queue.length) await src.removeRange(cur + 1, queue.length);
+      if (cur > 0) await src.removeRange(0, cur);
+      if (before.isNotEmpty) await src.insertAll(0, [for (final t in before) _src(t)]);
+      if (after.isNotEmpty) await src.addAll([for (final t in after) _src(t)]);
+      queue = [...before, now, ...after];
+    } finally {
+      _pinned = null;
+    }
     notifyListeners();
   }
 
