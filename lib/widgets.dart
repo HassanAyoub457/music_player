@@ -159,11 +159,12 @@ class NowPlayingPage extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Spacer(),
+            // const Spacer(),
             Container(
-              width: 240,
-              height: 240,
+              width: 320,
+              height: 320,
               decoration: BoxDecoration(
                 color: cs.primaryContainer,
                 borderRadius: BorderRadius.circular(24),
@@ -191,7 +192,7 @@ class NowPlayingPage extends StatelessWidget {
               t?.title ?? 'Nothing playing',
               style: Theme.of(context).textTheme.titleLarge,
               textAlign: TextAlign.center,
-              maxLines: 2,
+              maxLines: 5,
               overflow: TextOverflow.ellipsis,
             ),
             if (t?.artist != null)
@@ -264,29 +265,29 @@ class NowPlayingPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.volume_down),
-                Expanded(
-                  child: StreamBuilder<double>(
-                    stream: p.volumeStream,
-                    builder: (_, s) =>
-                        Slider(value: s.data ?? 1, onChanged: p.setVolume),
-                  ),
-                ),
-                const Icon(Icons.volume_up),
-                if (t != null)
-                  IconButton(
-                    icon: Icon(
-                      c.favorites.contains(t.path)
-                          ? Icons.favorite
-                          : Icons.favorite_border,
-                    ),
-                    onPressed: () => c.toggleFavorite(t),
-                  ),
-              ],
-            ),
-            const Spacer(),
+            // Row(
+            //   children: [
+            //     const Icon(Icons.volume_down),
+            //     Expanded(
+            //       child: StreamBuilder<double>(
+            //         stream: p.volumeStream,
+            //         builder: (_, s) =>
+            //             Slider(value: s.data ?? 1, onChanged: p.setVolume),
+            //       ),
+            //     ),
+            //     const Icon(Icons.volume_up),
+            //     if (t != null)
+            //       IconButton(
+            //         icon: Icon(
+            //           c.favorites.contains(t.path)
+            //               ? Icons.favorite
+            //               : Icons.favorite_border,
+            //         ),
+            //         onPressed: () => c.toggleFavorite(t),
+            //       ),
+            //   ],
+            // ),
+            // const Spacer(),
           ],
         ),
       ),
