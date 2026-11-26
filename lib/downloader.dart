@@ -3,6 +3,29 @@ import 'package:flutter/services.dart';
 
 import 'player_controller.dart';
 
+/// One row of a YouTube search.
+class SearchResult {
+  final String id, title, channel, url;
+  final double? duration; // seconds; null for live streams
+  const SearchResult({
+    required this.id,
+    required this.title,
+    required this.channel,
+    required this.url,
+    this.duration,
+  });
+
+  String get thumbnail => 'https://i.ytimg.com/vi/$id/mqdefault.jpg';
+
+  factory SearchResult.fromMap(Map<String, dynamic> m) => SearchResult(
+        id: m['id'] as String,
+        title: m['title'] as String? ?? '',
+        channel: m['channel'] as String? ?? '',
+        url: m['url'] as String? ?? 'https://www.youtube.com/watch?v=${m['id']}',
+        duration: (m['duration'] as num?)?.toDouble(),
+      );
+}
+
 class DownloadJob {
   final String id;
   final String url;
@@ -42,9 +65,19 @@ class Downloader extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> start(String url, {required bool audio, required String format}) async {
+  /// Searches YouTube through yt-dlp, so no API key is needed.
+  Future<List<SearchResult>> search(String query, {int count = 15}) async {
+    final raw = await _m.invokeMethod<List<dynamic>>('search', {'query': query, 'count': count});
+    return [
+      for (final r in raw ?? const []) SearchResult.fromMap(Map<String, dynamic>.from(r as Map)),
+    ];
+  }
+
+  /// Starts a download and returns its job id.
+  Future<String> start(String url, {required bool audio, required String format, String? title}) async {
     final id = DateTime.now().microsecondsSinceEpoch.toString();
     jobs[id] = DownloadJob(id, url);
+    if (title != null && title.isNotEmpty) jobs[id]!.title = title;
     notifyListeners();
     final dir = await PlayerController.downloadDir();
     jobs[id]!.outDir = dir.path;
@@ -56,6 +89,7 @@ class Downloader extends ChangeNotifier {
         ..status = e.message ?? 'Failed';
       notifyListeners();
     }
+    return id;
   }
 
   bool updating = false;

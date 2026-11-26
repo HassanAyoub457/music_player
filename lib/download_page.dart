@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 
 import 'downloader.dart';
 
+/// Paste a link to download it, and watch the progress of every download
+/// (including ones started from the Search tab).
 class DownloadPage extends StatefulWidget {
   const DownloadPage({super.key});
   @override
@@ -14,6 +16,12 @@ class _DownloadPageState extends State<DownloadPage> {
   final url = TextEditingController();
   bool audio = true;
   String format = 'mp3';
+
+  @override
+  void dispose() {
+    url.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

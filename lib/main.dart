@@ -8,6 +8,7 @@ import 'library_page.dart';
 import 'perf_logger.dart';
 import 'player_controller.dart';
 import 'playlists_page.dart';
+import 'search_page.dart';
 import 'theme.dart';
 import 'track_artwork.dart';
 import 'widgets.dart';
@@ -63,7 +64,7 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: IndexedStack(index: tab, children: const [LibraryPage(), PlaylistsPage(), DownloadPage()]),
+    body: IndexedStack(index: tab, children: const [LibraryPage(), PlaylistsPage(), SearchPage(), DownloadPage()]),
     bottomNavigationBar: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -74,6 +75,7 @@ class _HomeState extends State<Home> {
           destinations: const [
             NavigationDestination(icon: Icon(Icons.library_music), label: 'Library'),
             NavigationDestination(icon: Icon(Icons.queue_music), label: 'Playlists'),
+            NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
             NavigationDestination(icon: Icon(Icons.download), label: 'Download'),
           ],
         ),

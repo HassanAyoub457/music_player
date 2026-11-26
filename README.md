@@ -24,7 +24,8 @@ tracks or videos with built-in yt-dlp, complete with cover art and tags.
 - Edit a song's title, artist, album, genre and cover image
 
 **Downloads**
-- Paste a link and choose audio (mp3, m4a, opus and more) or video (mp4)
+- Search YouTube from inside the app, see thumbnails, channels and lengths, and download a result with one tap
+- Or paste a link and choose audio (mp3, m4a, opus and more) or video (mp4)
 - Cover art is embedded in the file, cropped square, along with title and artist
 - Files are saved to `Music/Seal Player`, a normal folder you can open in any file manager. If the app isn't allowed to write there, it falls back to its private folder
 - Finished downloads show up in your library automatically
