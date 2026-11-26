@@ -9,6 +9,7 @@ import com.yausername.youtubedl_android.YoutubeDLRequest
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
+import org.json.JSONObject
 import java.util.concurrent.Executors
 
 class MainActivity : AudioServiceActivity() {
@@ -39,8 +40,8 @@ class MainActivity : AudioServiceActivity() {
                             initialized = true
                         }
                         main.post { result.success(true) }
-                    } catch (e: Exception) {
-                        main.post { result.error("INIT", e.message, null) }
+                    } catch (e: Throwable) { // also catches Errors such as ExceptionInInitializerError
+                        main.post { result.error("INIT", e.message ?: e.toString(), null) }
                     }
                 }
 
@@ -103,6 +104,47 @@ class MainActivity : AudioServiceActivity() {
                             emit(mapOf("id" to id, "type" to "done"))
                         } catch (e: Exception) {
                             emit(mapOf("id" to id, "type" to "error", "message" to (e.message ?: "Download failed")))
+                        }
+                    }
+                }
+
+                "search" -> {
+                    val query = call.argument<String>("query")!!
+                    val count = call.argument<Int>("count") ?: 15
+                    executor.execute {
+                        try {
+                            // ytsearchN: is yt-dlp's built-in YouTube search. --flat-playlist
+                            // keeps it fast: one JSON line per result, no per-video lookups.
+                            val req = YoutubeDLRequest("ytsearch$count:$query")
+                            req.addOption("--flat-playlist")
+                            req.addOption("--dump-json")
+                            req.addOption("--no-warnings")
+                            val out = YoutubeDL.getInstance().execute(req).out
+
+                            fun str(o: JSONObject, key: String) =
+                                if (o.isNull(key)) "" else o.optString(key)
+
+                            val items = ArrayList<Map<String, Any?>>()
+                            for (line in out.lineSequence()) {
+                                val s = line.trim()
+                                if (!s.startsWith("{")) continue
+                                try {
+                                    val o = JSONObject(s)
+                                    val vid = str(o, "id")
+                                    if (vid.isEmpty()) continue
+                                    val channel = str(o, "channel").ifEmpty { str(o, "uploader") }
+                                    items.add(mapOf(
+                                        "id" to vid,
+                                        "title" to str(o, "title"),
+                                        "channel" to channel,
+                                        "duration" to (if (o.isNull("duration")) null else o.optDouble("duration")),
+                                        "url" to str(o, "url").ifEmpty { "https://www.youtube.com/watch?v=$vid" },
+                                    ))
+                                } catch (_: Exception) {}
+                            }
+                            main.post { result.success(items) }
+                        } catch (e: Exception) {
+                            main.post { result.error("SEARCH", e.message, null) }
                         }
                     }
                 }
