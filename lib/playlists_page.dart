@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'player_controller.dart';
 import 'track_menu.dart';
 import 'track_artwork.dart';
-import 'widgets.dart' show NowPlayingPage;
+import 'widgets.dart' show MiniPlayer, NowPlayingPage;
 
 class PlaylistsPage extends StatelessWidget {
   const PlaylistsPage({super.key});
@@ -136,9 +136,6 @@ class PlaylistDetailPage extends StatelessWidget {
                         label: const Text('Play'),
                         onPressed: () async {
                           await c.playQueue(tracks, 0);
-                          if (context.mounted) {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const NowPlayingPage()));
-                          }
                         },
                       ),
                       const SizedBox(width: 8),
@@ -147,9 +144,6 @@ class PlaylistDetailPage extends StatelessWidget {
                         label: const Text('Shuffle'),
                         onPressed: () async {
                           await c.playShuffled(tracks);
-                          if (context.mounted) {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const NowPlayingPage()));
-                          }
                         },
                       ),
                     ],
@@ -165,7 +159,12 @@ class PlaylistDetailPage extends StatelessWidget {
                       return ListTile(
                         key: ValueKey(t.path),
                         leading: TrackArtwork(bytes: t.artwork, playing: playing),
-                        title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        title: Text(
+                          t.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: playing ? const TextStyle(color: Colors.yellow) : null,
+                        ),
                         subtitle: t.artist == null ? null : Text(t.artist!, maxLines: 1, overflow: TextOverflow.ellipsis),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -188,6 +187,7 @@ class PlaylistDetailPage extends StatelessWidget {
                 ),
               ],
             ),
+      bottomNavigationBar: c.current == null ? null : const MiniPlayer(),
     );
   }
 }
